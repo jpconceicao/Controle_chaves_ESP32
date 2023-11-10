@@ -26,9 +26,12 @@ void resetar_EEPROM();
 
 void opcoes_admin();
 
-void salvar_senha_EEPROM(int numero_chave, String senha);
+void salvar_senha_EEPROM(int numero_chave, int n_carro);
 String get_string(int endereco_inicial);
 void liberar_chave(int numero_chave);
+
+#define TEMPO_ESPERA 20
+
 
 BluetoothSerial SerialBT;
 
@@ -111,7 +114,6 @@ void set_senha_master()
 {
   // Converte a string em bytes
   String data = "#Diabinho";
-  Serial.println(data.length());
 
   byte bytes[data.length() + 1];
   data.getBytes(bytes, data.length() + 1);
@@ -122,8 +124,6 @@ void set_senha_master()
   for (int i = 0; i < data.length(); i++)
   {
     EEPROM.write(i + 1, bytes[i]);
-    Serial.print("Inserindo byte: ");
-    Serial.println(bytes[i]);
   }
 
   EEPROM.commit();
@@ -133,7 +133,6 @@ void set_senha_padrao_carro_1()
 {
   // Converte a string em bytes
   String data = "#Carro1";
-  Serial.println(data.length());
 
   byte bytes[data.length() + 1];
   data.getBytes(bytes, data.length() + 1);
@@ -144,8 +143,6 @@ void set_senha_padrao_carro_1()
   for (int i = 0; i < data.length(); i++)
   {
     EEPROM.write(eeprom_Address_chave1 + i + 1, bytes[i]);
-    Serial.print("Inserindo byte: ");
-    Serial.println(bytes[i]);
   }
 
   EEPROM.commit();
@@ -155,7 +152,6 @@ void set_senha_padrao_carro_2()
 {
   // Converte a string em bytes
   String data = "#Carro2";
-  Serial.println(data.length());
 
   byte bytes[data.length() + 1];
   data.getBytes(bytes, data.length() + 1);
@@ -166,8 +162,6 @@ void set_senha_padrao_carro_2()
   for (int i = 0; i < data.length(); i++)
   {
     EEPROM.write(eeprom_Address_chave2 + i + 1, bytes[i]);
-    Serial.print("Inserindo byte: ");
-    Serial.println(bytes[i]);
   }
 
   EEPROM.commit();
@@ -177,7 +171,6 @@ void set_senha_padrao_carro_3()
 {
   // Converte a string em bytes
   String data = "#Carro3";
-  Serial.println(data.length());
 
   byte bytes[data.length() + 1];
   data.getBytes(bytes, data.length() + 1);
@@ -188,8 +181,6 @@ void set_senha_padrao_carro_3()
   for (int i = 0; i < data.length(); i++)
   {
     EEPROM.write(eeprom_Address_chave3 + i + 1, bytes[i]);
-    Serial.print("Inserindo byte: ");
-    Serial.println(bytes[i]);
   }
 
   EEPROM.commit();
@@ -199,7 +190,6 @@ void set_senha_padrao_carro_4()
 {
   // Converte a string em bytes
   String data = "#Carro4";
-  Serial.println(data.length());
 
   byte bytes[data.length() + 1];
   data.getBytes(bytes, data.length() + 1);
@@ -210,8 +200,6 @@ void set_senha_padrao_carro_4()
   for (int i = 0; i < data.length(); i++)
   {
     EEPROM.write(eeprom_Address_chave4 + i + 1, bytes[i]);
-    Serial.print("Inserindo byte: ");
-    Serial.println(bytes[i]);
   }
 
   EEPROM.commit();
@@ -227,44 +215,15 @@ void resetar_EEPROM()
   set_senha_padrao_carro_4();
 }
 
-void salvar_senha_EEPROM(int endereco_inicial, String senha)
-{
-  // Converte a string em bytes
-
-  Serial.println(senha.length());
-
-  byte bytes[senha.length() + 1];
-  senha.getBytes(bytes, senha.length() + 1);
-
-  EEPROM.write(0, senha.length());
-
-  // Escreve os bytes da string na EEPROM
-  for (int i = 0; i < senha.length(); i++)
-  {
-    EEPROM.write(i + 1, bytes[i]);
-  }
-
-  EEPROM.commit();
-
-  SerialBT.println("Finalizada a inserção da nova senha!");
-}
-
 String get_string(int endereco_inicial)
 {
   String string = "";
 
   int tamanho = EEPROM.read(endereco_inicial);
-  Serial.println(tamanho);
   for (int i = 0; i < tamanho; i++)
   {
-    Serial.print(i);
-    Serial.print(" - ");
-    Serial.println(EEPROM.readByte(endereco_inicial + i + 1));
-
     char c = (char)EEPROM.readByte(endereco_inicial + i + 1);
     string += c;
-    // Imprime a string.
-    Serial.println(c);
   }
 
   return string;
@@ -272,6 +231,9 @@ String get_string(int endereco_inicial)
 
 void liberar_chave(int numero_chave)
 {
+  delay(TEMPO_ESPERA);
+  SerialBT.println("Insira a senha: ");
+
   while (!SerialBT.available())
   {
 
@@ -352,4 +314,105 @@ void liberar_chave(int numero_chave)
 
 void opcoes_admin()
 {
+  delay(TEMPO_ESPERA);
+  SerialBT.println("Entrou nas opções de admin");
+
+  SerialBT.println("Menu do admin: ");
+  SerialBT.println("- Digite de 1 a 4 p/ alterar as senhas dos carros");
+  SerialBT.println("- Digite 5 p/ alterar a senha master");
+
+  while (!SerialBT.available())
+  {
+    if (SerialBT.available())
+    {
+      // Lê a senha
+      String valor = SerialBT.readString();
+      valor.remove(valor.length() - 1);
+      valor.remove(valor.length() - 1);
+
+      int endereco_inicial = 0;
+
+      switch (atoi(valor.c_str()))
+      {
+      case 1:
+        endereco_inicial = eeprom_Address_chave1;
+        salvar_senha_EEPROM(endereco_inicial, atoi(valor.c_str()));
+        break;
+
+      case 2:
+        endereco_inicial = eeprom_Address_chave2;
+        salvar_senha_EEPROM(endereco_inicial, atoi(valor.c_str()));
+        break;
+
+      case 3:
+        endereco_inicial = eeprom_Address_chave3;
+        salvar_senha_EEPROM(endereco_inicial, atoi(valor.c_str()));
+        break;
+
+      case 4:
+        endereco_inicial = eeprom_Address_chave4;
+        salvar_senha_EEPROM(endereco_inicial, atoi(valor.c_str()));
+        break;
+
+      case 5:
+        endereco_inicial = eeprom_Address_master;
+        salvar_senha_EEPROM(endereco_inicial, atoi(valor.c_str()));
+        break;
+
+      default:
+        SerialBT.println("Valor inválido! Reiniciando sistema.");
+        break;
+      }
+
+      break;
+    }
+  }
+  delay(TEMPO_ESPERA);
+  SerialBT.println("Saiu do loop de admin!");
+}
+
+void salvar_senha_EEPROM(int endereco_inicial, int n_carro)
+{
+  delay(TEMPO_ESPERA);
+  SerialBT.println("Entrou em salvar senha");
+
+  SerialBT.println("Insira a senha desejada: ");
+
+  while (!SerialBT.available())
+  {
+    if (SerialBT.available())
+    {
+      // Lê a senha
+      String senha = SerialBT.readString();
+      senha.remove(senha.length() - 1);
+      senha.remove(senha.length() - 1);
+
+      byte bytes[senha.length() + 1];
+      senha.getBytes(bytes, senha.length() + 1);
+
+      EEPROM.write(endereco_inicial, senha.length());
+
+      // Escreve os bytes da string na EEPROM
+      for (int i = 0; i < senha.length(); i++)
+      {
+        EEPROM.write(endereco_inicial + i + 1, bytes[i]);
+      }
+
+      EEPROM.commit();
+
+      delay(TEMPO_ESPERA);
+
+      if(n_carro == 5)
+      {
+        SerialBT.println("Finalizada a inserção da nova senha master!");
+      }
+      else
+      {
+        SerialBT.print("Finalizada a inserção da nova senha p/ carro ");
+        SerialBT.println(n_carro);
+      }
+
+      break;
+    }
+  }
 }
