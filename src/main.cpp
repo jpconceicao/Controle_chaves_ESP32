@@ -1,3 +1,8 @@
+/* Sistema Bluetooth para controle de chaves dos carros da Eletrônica Embarcada
+ *  Desenvolvido por:    JORGE PALMA CONCEIÇÃO
+ *  Data:                14/11/2023
+ */
+
 #include <Arduino.h>
 
 #include <iostream>
@@ -6,8 +11,12 @@
 #include <Wire.h>
 #include <BluetoothSerial.h>
 #include <ESP32Servo.h>
-
 #include <EEPROM.h>
+
+// DECLARAÇÃO DE VARIÁVEL DE TEMPO DO LED
+unsigned long tempo_atual;
+unsigned long tempo_anterior;
+const long intervalo = 45000; // Intervalo desejado em milissegundos (45 segundos)
 
 /* Variáveis e funções relacionadas à EEPROM */
 const int eeprom_Address_master = 0;
@@ -24,14 +33,18 @@ void set_senha_padrao_carro_4();
 
 void resetar_EEPROM();
 
+bool ctrl_loop_liberar_chaves = false;
+bool ctrl_loop_admin = false;
+bool ctrl_loop_admin_salvar_senha = false;
+/* ------------------------------------------ */
+
 void opcoes_admin();
 
 void salvar_senha_EEPROM(int numero_chave, int n_carro);
 String get_string(int endereco_inicial);
 void liberar_chave(int numero_chave);
 
-#define TEMPO_ESPERA 20
-
+#define TEMPO_ESPERA 50
 
 BluetoothSerial SerialBT;
 
@@ -94,16 +107,20 @@ void loop()
       }
       else
       {
-        if (!strcmp(data.c_str(), "reset"))
+        if (!strcmp(data.c_str(), "#reset"))
         {
           // Reseta os valores p/ o padrão
           resetar_EEPROM();
         }
-
-        if (!strcmp(data.c_str(), get_string(eeprom_Address_master).c_str()))
+        else if (!strcmp(data.c_str(), get_string(eeprom_Address_master).c_str()))
         {
           /* Rotina de administrador */
           opcoes_admin();
+        }
+        else
+        {
+          delay(TEMPO_ESPERA);
+          SerialBT.println("Informação inválida!");
         }
       }
     }
@@ -127,6 +144,8 @@ void set_senha_master()
   }
 
   EEPROM.commit();
+  delay(TEMPO_ESPERA);
+  SerialBT.println("Resetada a senha padrão do Master");
 }
 
 void set_senha_padrao_carro_1()
@@ -146,6 +165,8 @@ void set_senha_padrao_carro_1()
   }
 
   EEPROM.commit();
+  delay(TEMPO_ESPERA);
+  SerialBT.println("Resetada a senha padrão do carro 1");
 }
 
 void set_senha_padrao_carro_2()
@@ -165,6 +186,8 @@ void set_senha_padrao_carro_2()
   }
 
   EEPROM.commit();
+  delay(TEMPO_ESPERA);
+  SerialBT.println("Resetada a senha padrão do carro 2");
 }
 
 void set_senha_padrao_carro_3()
@@ -184,6 +207,8 @@ void set_senha_padrao_carro_3()
   }
 
   EEPROM.commit();
+  delay(TEMPO_ESPERA);
+  SerialBT.println("Resetada a senha padrão do carro 3");
 }
 
 void set_senha_padrao_carro_4()
@@ -203,6 +228,9 @@ void set_senha_padrao_carro_4()
   }
 
   EEPROM.commit();
+
+  delay(TEMPO_ESPERA);
+  SerialBT.println("Resetada a senha padrão do carro 4");
 }
 
 void resetar_EEPROM()
@@ -234,8 +262,20 @@ void liberar_chave(int numero_chave)
   delay(TEMPO_ESPERA);
   SerialBT.println("Insira a senha: ");
 
-  while (!SerialBT.available())
+  // Start no contador
+  tempo_atual = millis();
+  tempo_anterior = tempo_atual;
+
+  while (!ctrl_loop_liberar_chaves)
   {
+    tempo_atual = millis();
+    if (tempo_atual - tempo_anterior >= intervalo)
+    { // Atraso de 1 segundo (1000 milissegundos)
+      ctrl_loop_liberar_chaves = true;
+
+      tempo_anterior = tempo_atual; // Atualiza o tempo anterior para o próximo atraso
+      SerialBT.println("Tempo excedido! Aplicação reiniciada");
+    }
 
     // Implementar contador para não ficar aqui pra sempre
     if (SerialBT.available())
@@ -253,12 +293,29 @@ void liberar_chave(int numero_chave)
         if (!strcmp(senha.c_str(), senha_salva.c_str()))
         {
           // Rotina para girar o motor e liberar a chave.
-          SerialBT.println("Liberar chave do carro 1");
+          delay(TEMPO_ESPERA);
+          SerialBT.println("Liberando chave do carro 1...");
+          for (int pos = 0; pos <= 90; pos += 1)
+          {
+            myservo.write(pos); // tell servo to go to position in variable 'pos'
+            delay(1);           // waits 15ms for the servo to reach the position
+          }
+
+          delay(3000);
+
+          for (int pos = 90; pos >= 0; pos -= 1)
+          {                     // goes from 180 degrees to 0 degrees
+            myservo.write(pos); // tell servo to go to position in variable 'pos'
+            delay(1);           // waits 15ms for the servo to reach the position
+          }
+
+          ctrl_loop_liberar_chaves = true;
         }
         else
         {
           SerialBT.println("Senha incorreta!");
         }
+
         break;
 
       case 2:
@@ -266,12 +323,28 @@ void liberar_chave(int numero_chave)
         if (!strcmp(senha.c_str(), senha_salva.c_str()))
         {
           // Rotina para girar o motor e liberar a chave.
-          SerialBT.println("Liberar chave do carro 2");
+          delay(TEMPO_ESPERA);
+          SerialBT.println("Liberando chave do carro 2...");
+          for (int pos = 0; pos <= 90; pos += 1)
+          {
+            myservo.write(pos); // tell servo to go to position in variable 'pos'
+            delay(1);           // waits 15ms for the servo to reach the position
+          }
+
+          delay(3000);
+
+          for (int pos = 90; pos >= 0; pos -= 1)
+          {                     // goes from 180 degrees to 0 degrees
+            myservo.write(pos); // tell servo to go to position in variable 'pos'
+            delay(1);           // waits 15ms for the servo to reach the position
+          }
+          ctrl_loop_liberar_chaves = true;
         }
         else
         {
           SerialBT.println("Senha incorreta!");
         }
+
         break;
 
       case 3:
@@ -279,12 +352,28 @@ void liberar_chave(int numero_chave)
         if (!strcmp(senha.c_str(), senha_salva.c_str()))
         {
           // Rotina para girar o motor e liberar a chave.
-          SerialBT.println("Liberar chave do carro 3");
+          delay(TEMPO_ESPERA);
+          SerialBT.println("Liberando chave do carro 3...");
+          for (int pos = 0; pos <= 90; pos += 1)
+          {
+            myservo.write(pos); // tell servo to go to position in variable 'pos'
+            delay(1);           // waits 15ms for the servo to reach the position
+          }
+
+          delay(3000);
+
+          for (int pos = 90; pos >= 0; pos -= 1)
+          {                     // goes from 180 degrees to 0 degrees
+            myservo.write(pos); // tell servo to go to position in variable 'pos'
+            delay(1);           // waits 15ms for the servo to reach the position
+          }
+          ctrl_loop_liberar_chaves = true;
         }
         else
         {
-          SerialBT.println("Senha incorreta");
+          SerialBT.println("Senha incorreta!");
         }
+
         break;
 
       case 4:
@@ -292,23 +381,43 @@ void liberar_chave(int numero_chave)
         if (!strcmp(senha.c_str(), senha_salva.c_str()))
         {
           // Rotina para girar o motor e liberar a chave.
-          SerialBT.println("Liberar chave do carro 4");
+          delay(TEMPO_ESPERA);
+          SerialBT.println("Liberando chave do carro 4...");
+          for (int pos = 0; pos <= 90; pos += 1)
+          {
+            myservo.write(pos); // tell servo to go to position in variable 'pos'
+            delay(1);           // waits 15ms for the servo to reach the position
+          }
+
+          delay(3000);
+
+          for (int pos = 90; pos >= 0; pos -= 1)
+          {                     // goes from 180 degrees to 0 degrees
+            myservo.write(pos); // tell servo to go to position in variable 'pos'
+            delay(1);           // waits 15ms for the servo to reach the position
+          }
+
+          ctrl_loop_liberar_chaves = true;
         }
         else
         {
-          SerialBT.println("Senha incorreta");
+          SerialBT.println("Senha incorreta!");
         }
+
         break;
 
       default:
-        SerialBT.println("Numero da chave inválido! ");
+        SerialBT.println("Numero da chave inválido! Tente novamente");
         break;
       }
 
-      break;
+      delay(TEMPO_ESPERA);
+      if (ctrl_loop_liberar_chaves)
+        break;
     }
   }
 
+  ctrl_loop_liberar_chaves = false;
   SerialBT.println("Saiu do loop");
 }
 
@@ -321,8 +430,21 @@ void opcoes_admin()
   SerialBT.println("- Digite de 1 a 4 p/ alterar as senhas dos carros");
   SerialBT.println("- Digite 5 p/ alterar a senha master");
 
-  while (!SerialBT.available())
+  // Start no contador
+  tempo_atual = millis();
+  tempo_anterior = tempo_atual;
+
+  while (!ctrl_loop_admin)
   {
+    tempo_atual = millis();
+    if (tempo_atual - tempo_anterior >= intervalo)
+    { // Atraso de 1 segundo (1000 milissegundos)
+      ctrl_loop_admin = true;
+
+      tempo_anterior = tempo_atual; // Atualiza o tempo anterior para o próximo atraso
+      SerialBT.println("Tempo excedido! Aplicação reiniciada");
+    }
+
     if (SerialBT.available())
     {
       // Lê a senha
@@ -337,36 +459,46 @@ void opcoes_admin()
       case 1:
         endereco_inicial = eeprom_Address_chave1;
         salvar_senha_EEPROM(endereco_inicial, atoi(valor.c_str()));
+        ctrl_loop_admin = true;
         break;
 
       case 2:
         endereco_inicial = eeprom_Address_chave2;
         salvar_senha_EEPROM(endereco_inicial, atoi(valor.c_str()));
+        ctrl_loop_admin = true;
         break;
 
       case 3:
         endereco_inicial = eeprom_Address_chave3;
         salvar_senha_EEPROM(endereco_inicial, atoi(valor.c_str()));
+        ctrl_loop_admin = true;
         break;
 
       case 4:
         endereco_inicial = eeprom_Address_chave4;
         salvar_senha_EEPROM(endereco_inicial, atoi(valor.c_str()));
+        ctrl_loop_admin = true;
         break;
 
       case 5:
         endereco_inicial = eeprom_Address_master;
         salvar_senha_EEPROM(endereco_inicial, atoi(valor.c_str()));
+        ctrl_loop_admin = true;
         break;
 
       default:
         SerialBT.println("Valor inválido! Reiniciando sistema.");
+        ctrl_loop_admin = true;
         break;
       }
 
-      break;
+      delay(TEMPO_ESPERA);
+      if (ctrl_loop_admin)
+        break;
     }
   }
+
+  ctrl_loop_admin = false;
   delay(TEMPO_ESPERA);
   SerialBT.println("Saiu do loop de admin!");
 }
@@ -378,8 +510,22 @@ void salvar_senha_EEPROM(int endereco_inicial, int n_carro)
 
   SerialBT.println("Insira a senha desejada: ");
 
-  while (!SerialBT.available())
+  // Start no contador
+  tempo_atual = millis();
+  tempo_anterior = tempo_atual;
+
+  while (!ctrl_loop_admin_salvar_senha)
   {
+
+    tempo_atual = millis();
+    if (tempo_atual - tempo_anterior >= intervalo)
+    { // Atraso de 1 segundo (1000 milissegundos)
+      ctrl_loop_admin_salvar_senha = true;
+
+      tempo_anterior = tempo_atual; // Atualiza o tempo anterior para o próximo atraso
+      SerialBT.println("Tempo excedido! Aplicação reiniciada");
+    }
+
     if (SerialBT.available())
     {
       // Lê a senha
@@ -387,32 +533,40 @@ void salvar_senha_EEPROM(int endereco_inicial, int n_carro)
       senha.remove(senha.length() - 1);
       senha.remove(senha.length() - 1);
 
-      byte bytes[senha.length() + 1];
-      senha.getBytes(bytes, senha.length() + 1);
-
-      EEPROM.write(endereco_inicial, senha.length());
-
-      // Escreve os bytes da string na EEPROM
-      for (int i = 0; i < senha.length(); i++)
+      if (senha.length() < 10)
       {
-        EEPROM.write(endereco_inicial + i + 1, bytes[i]);
-      }
+        byte bytes[senha.length() + 1];
+        senha.getBytes(bytes, senha.length() + 1);
 
-      EEPROM.commit();
+        EEPROM.write(endereco_inicial, senha.length());
 
-      delay(TEMPO_ESPERA);
+        // Escreve os bytes da string na EEPROM
+        for (int i = 0; i < senha.length(); i++)
+        {
+          EEPROM.write(endereco_inicial + i + 1, bytes[i]);
+        }
 
-      if(n_carro == 5)
-      {
-        SerialBT.println("Finalizada a inserção da nova senha master!");
+        EEPROM.commit();
+
+        delay(TEMPO_ESPERA);
+
+        if (n_carro == 5)
+        {
+          SerialBT.println("Finalizada a inserção da nova senha master!");
+        }
+        else
+        {
+          SerialBT.print("Finalizada a inserção da nova senha p/ carro ");
+          SerialBT.println(n_carro);
+        }
       }
       else
       {
-        SerialBT.print("Finalizada a inserção da nova senha p/ carro ");
-        SerialBT.println(n_carro);
+        delay(TEMPO_ESPERA);
+        SerialBT.println("Senha muito longa! Reiniciando o sistema.");
       }
 
-      break;
+      ctrl_loop_admin_salvar_senha = true;
     }
   }
 }
